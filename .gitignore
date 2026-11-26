@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+*.env
+*.env.*
+!.env.example
+.venv/
+env/
+venv/
+
+# State
+active_selection.json
+
+# OS files
+.DS_Store
+Thumbs.db

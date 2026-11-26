@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Noha AI Assistant — Model Selector</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0f1117;
+      --card-bg: rgba(26, 31, 46, 0.6);
+      --card-hover: rgba(38, 45, 68, 0.8);
+      --card-active: rgba(59, 130, 246, 0.15);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-active: #3b82f6;
+      --groq-orange: #f97316;
+      --groq-bg: rgba(249, 115, 22, 0.12);
+      --or-purple: #a855f7;
+      --or-bg: rgba(168, 85, 247, 0.12);
+      --ar-emerald: #10b981;
+      --ar-bg: rgba(16, 185, 129, 0.12);
+    }
+    .model-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      transition: all 0.15s ease-in-out;
+      backdrop-filter: blur(8px);
+    }
+    .model-card:hover {
+      background: var(--card-hover);
+      border-color: rgba(255, 255, 255, 0.18);
+      transform: translateY(-1px);
+    }
+    .model-card.active {
+      border-color: #3b82f6;
+      background: var(--card-active);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+    }
+    .provider-tab {
+      transition: all 0.2s ease;
+    }
+    .provider-tab.active-groq {
+      background: var(--groq-orange);
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(249, 115, 22, 0.4);
+    }
+    .provider-tab.active-or {
+      background: var(--or-purple);
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+    }
+    .provider-tab.active-ar {
+      background: var(--ar-emerald);
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+  </style>
+</head>
+<body class="bg-transparent text-[var(--foreground)] antialiased p-0 m-0 font-sans text-xs select-none">
+  <div class="p-3 space-y-3 rounded-xl border border-[var(--card-border)] bg-[#0d1117]/80 backdrop-blur-md">
+    
+    <!-- Header: Assistant Branding & Current Selection -->
+    <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-[var(--card-border)]">
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-sky-500 via-indigo-500 to-purple-500 flex items-center justify-center shadow-md shadow-indigo-500/20 font-black text-white text-xs">
+          N
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5 font-bold text-sm tracking-tight text-[var(--foreground)]">
+            <span>Noha AI Assistant</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-blue-500/20 text-blue-400 font-mono border border-blue-500/30">v1.0</span>
+          </div>
+          <div class="text-[10px] text-[var(--muted-foreground)]">Antigravity Model Switcher & Multi-Provider Router</div>
+        </div>
+      </div>
+
+      <!-- Right Side Actions: API Keys & Active Badge -->
+      <div class="flex items-center gap-2">
+        <button onclick="toggleApiKeyPanel()" id="btnApiKeyToggle" 
+                class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--card-border)] bg-black/40 hover:bg-white/10 text-[11px] text-[var(--foreground)] font-medium transition-colors cursor-pointer">
+          <span>🔑</span>
+          <span>API Keys</span>
+          <span id="apiKeyStatusPill" class="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-mono">Config</span>
+        </button>
+
+        <!-- Active Selection Badge -->
+        <div class="flex items-center gap-2 bg-black/40 px-2.5 py-1 rounded-lg border border-[var(--card-border)]">
+          <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-[10px] font-mono text-[var(--muted-foreground)] uppercase">ACTIVE:</span>
+          <span id="activeModelBadge" class="font-mono text-[11px] font-bold text-sky-400">
+            ⚡ Groq / llama-3.3-70b-versatile
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLLAPSIBLE API KEY CONFIGURATION PANEL -->
+    <div id="apiKeyPanel" class="hidden p-3 rounded-xl border border-blue-500/30 bg-[#121622]/95 backdrop-blur-md space-y-3 shadow-xl">
+      <div class="flex items-center justify-between pb-2 border-b border-white/10">
+        <div class="flex items-center gap-2">
+          <span class="text-sm">🔑</span>
+          <span class="font-bold text-xs text-white">Configure Provider API Keys</span>
+          <span class="text-[10px] text-gray-400">(Saved to environment & local session)</span>
+        </div>
+        <button onclick="toggleApiKeyPanel()" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 transition-colors cursor-pointer">✕</button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <!-- 1. Groq Cloud Key -->
+        <div class="p-2.5 rounded-lg border border-orange-500/20 bg-orange-500/5 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-orange-400 flex items-center gap-1">⚡ Groq API Key</span>
+            <a href="https://console.groq.com/keys" target="_blank" class="text-[9px] text-orange-300/80 hover:text-orange-200 underline">Get Free Key ↗</a>
+          </div>
+          <div class="relative">
+            <input id="keyInputGroq" type="password" placeholder="gsk_..." 
+                   class="w-full pr-7 pl-2 py-1 rounded bg-black/50 border border-orange-500/30 text-white font-mono text-[11px] focus:outline-none focus:border-orange-400" />
+            <button onclick="toggleInputVisibility('keyInputGroq')" class="absolute right-2 top-1 text-[10px] text-gray-400 hover:text-white cursor-pointer">👁️</button>
+          </div>
+          <div class="flex items-center justify-between text-[9px]">
+            <span id="statusBadgeGroq" class="text-gray-400 font-mono">Not Set</span>
+            <button onclick="applyKeyPrompt('groq')" class="text-sky-400 hover:underline cursor-pointer">Apply to .env ↗</button>
+          </div>
+        </div>
+
+        <!-- 2. OpenRouter Key -->
+        <div class="p-2.5 rounded-lg border border-purple-500/20 bg-purple-500/5 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-purple-300 flex items-center gap-1">🌐 OpenRouter Key</span>
+            <a href="https://openrouter.ai/keys" target="_blank" class="text-[9px] text-purple-300/80 hover:text-purple-200 underline">Get Key ↗</a>
+          </div>
+          <div class="relative">
+            <input id="keyInputOR" type="password" placeholder="sk-or-v1-..." 
+                   class="w-full pr-7 pl-2 py-1 rounded bg-black/50 border border-purple-500/30 text-white font-mono text-[11px] focus:outline-none focus:border-purple-400" />
+            <button onclick="toggleInputVisibility('keyInputOR')" class="absolute right-2 top-1 text-[10px] text-gray-400 hover:text-white cursor-pointer">👁️</button>
+          </div>
+          <div class="flex items-center justify-between text-[9px]">
+            <span id="statusBadgeOR" class="text-gray-400 font-mono">Not Set</span>
+            <button onclick="applyKeyPrompt('openrouter')" class="text-sky-400 hover:underline cursor-pointer">Apply to .env ↗</button>
+          </div>
+        </div>
+
+        <!-- 3. AgentRouter Key -->
+        <div class="p-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-emerald-300 flex items-center gap-1">🎯 AgentRouter Key</span>
+            <a href="https://agentrouter.to" target="_blank" class="text-[9px] text-emerald-300/80 hover:text-emerald-200 underline">Optional ↗</a>
+          </div>
+          <div class="relative">
+            <input id="keyInputAR" type="password" placeholder="sk-..." 
+                   class="w-full pr-7 pl-2 py-1 rounded bg-black/50 border border-emerald-500/30 text-white font-mono text-[11px] focus:outline-none focus:border-emerald-400" />
+            <button onclick="toggleInputVisibility('keyInputAR')" class="absolute right-2 top-1 text-[10px] text-gray-400 hover:text-white cursor-pointer">👁️</button>
+          </div>
+          <div class="flex items-center justify-between text-[9px]">
+            <span id="statusBadgeAR" class="text-gray-400 font-mono">Not Set</span>
+            <button onclick="applyKeyPrompt('agentrouter')" class="text-sky-400 hover:underline cursor-pointer">Apply to .env ↗</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-1 border-t border-white/5">
+        <div class="text-[10px] text-gray-400">
+          💡 Click <b>Save Keys</b> to store in local session, or <b>Apply to .env</b> to copy Antigravity persistence command.
+        </div>
+        <div class="flex gap-2">
+          <button onclick="saveAllApiKeys()" class="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[11px] transition-all shadow cursor-pointer">
+            💾 Save Keys
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Provider Selection Tabs -->
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div class="inline-flex p-1 rounded-lg border border-[var(--card-border)] bg-black/30 gap-1">
+        <button id="tab-groq" onclick="setProvider('groq')" 
+                class="provider-tab active-groq px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5">
+          <span>⚡ Groq LPU</span>
+          <span class="text-[9px] px-1 rounded bg-black/20 text-white font-mono">Ultra-Fast</span>
+        </button>
+        <button id="tab-openrouter" onclick="setProvider('openrouter')" 
+                class="provider-tab px-3 py-1 rounded-md text-xs font-semibold text-[var(--muted-foreground)] hover:text-white flex items-center gap-1.5">
+          <span>🌐 OpenRouter</span>
+          <span class="text-[9px] px-1 rounded bg-purple-500/20 text-purple-300 font-mono">470+ Models</span>
+        </button>
+        <button id="tab-agentrouter" onclick="setProvider('agentrouter')" 
+                class="provider-tab px-3 py-1 rounded-md text-xs font-semibold text-[var(--muted-foreground)] hover:text-white flex items-center gap-1.5">
+          <span>🎯 AgentRouter</span>
+          <span class="text-[9px] px-1 rounded bg-emerald-500/20 text-emerald-300 font-mono">Specialists</span>
+        </button>
+      </div>
+
+      <!-- Live Search Box (Antigravity Style) -->
+      <div class="relative flex-1 min-w-[180px] max-w-[280px]">
+        <input id="searchInput" type="text" onkeyup="filterModels()" placeholder="Search models or tags..." 
+               class="w-full pl-7 pr-2 py-1 rounded-lg bg-black/40 border border-[var(--card-border)] text-[11px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:border-blue-500 transition-colors" />
+        <span class="absolute left-2.5 top-1.5 text-[11px] text-[var(--muted-foreground)]">🔍</span>
+      </div>
+    </div>
+
+    <!-- VIEW 1: Groq LPU Models (Default) -->
+    <div id="view-groq" class="space-y-2">
+      <div class="flex items-center justify-between text-[11px] text-[var(--muted-foreground)] px-0.5">
+        <span class="font-medium text-[var(--foreground)]">GROQ LPU ACCELERATED MODELS (~800 TOKENS/SEC)</span>
+        <span class="text-orange-400 font-mono text-[10px]">Zero-Latency Real-Time</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2" id="groq-model-list">
+        
+        <!-- Groq 1: Llama 3.3 70B Versatile -->
+        <div onclick="selectModel('groq', 'llama-3.3-70b-versatile', 'Llama 3.3 70B', 'card-groq-llama70')" id="card-groq-llama70" 
+             class="model-card active p-2.5 rounded-lg cursor-pointer flex flex-col justify-between"
+             data-keywords="llama meta 70b versatile groq flagship fast coding">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="font-bold text-[var(--foreground)] text-[12px]">Llama 3.3 70B</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-orange-500/20 text-orange-400 font-mono font-semibold border border-orange-500/30">★ Flagship</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">Meta • Versatile Reasoning & Code</div>
+          </div>
+          <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5 font-mono text-[10px]">
+            <span class="text-emerald-400">⚡ ~350 t/s</span>
+            <span class="text-gray-400">128k ctx</span>
+          </div>
+        </div>
+
+        <!-- Groq 2: DeepSeek R1 Distill Llama 70B (Reasoning) -->
+        <div onclick="selectModel('groq', 'deepseek-r1-distill-llama-70b', 'DeepSeek R1 Distill 70B', 'card-groq-r1')" id="card-groq-r1" 
+             class="model-card p-2.5 rounded-lg cursor-pointer flex flex-col justify-between"
+             data-keywords="deepseek r1 distill llama 70b reasoning math logic groq">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="font-bold text-[var(--foreground)] text-[12px]">DeepSeek R1 Distill</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-mono font-semibold border border-purple-500/30">🧠 Reasoning</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">DeepSeek + Llama 70B • Deep Logic</div>
+          </div>
+          <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5 font-mono text-[10px]">
+            <span class="text-purple-400">⚡ ~320 t/s</span>
+            <span class="text-gray-400">128k ctx</span>
+          </div>
+        </div>
+
+        <!-- Groq 3: Llama 3.1 8B Instant (Ultra-Speed) -->
+        <div onclick="selectModel('groq', 'llama-3.1-8b-instant', 'Llama 3.1 8B Instant', 'card-groq-llama8')" id="card-groq-llama8" 
+             class="model-card p-2.5 rounded-lg cursor-pointer flex flex-col justify-between"
+             data-keywords="llama 8b instant ultra fast groq quick light">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="font-bold text-[var(--foreground)] text-[12px]">Llama 3.1 8B Instant</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-mono font-semibold border border-emerald-500/30">🚀 850 t/s</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">Meta • Ultra-Fast Triage & Scripts</div>
+          </div>
+          <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5 font-mono text-[10px]">
+            <span class="text-emerald-400">⚡ ~850 t/s</span>
+            <span class="text-gray-400">128k ctx</span>
+          </div>
+        </div>
+
+        <!-- Groq 4: Mixtral 8x7B -->
+        <div onclick="selectModel('groq', 'mixtral-8x7b-32768', 'Mixtral 8x7B', 'card-groq-mixtral')" id="card-groq-mixtral" 
+             class="model-card p-2.5 rounded-lg cursor-pointer flex flex-col justify-between"
+             data-keywords="mixtral 8x7b mistral moe groq">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="font-bold text-[var(--foreground)] text-[12px]">Mixtral 8x7B</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 font-mono font-semibold border border-blue-500/30">MoE</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">Mistral AI • Fast MoE Architecture</div>
+          </div>
+          <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5 font-mono text-[10px]">
+            <span class="text-emerald-400">⚡ ~500 t/s</span>
+            <span class="text-gray-400">32k ctx</span>
+          </div>
+        </div>
+
+        <!-- Groq 5: Gemma 2 9B IT -->
+        <div onclick="selectModel('groq', 'gemma2-9b-it', 'Gemma 2 9B IT', 'card-groq-gemma')" id="card-groq-gemma" 
+             class="model-card p-2.5 rounded-lg cursor-pointer flex flex-col justify-between"
+             data-keywords="gemma google 9b instruction groq">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="font-bold text-[var(--foreground)] text-[12px]">Gemma 2 9B IT</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-400 font-mono font-semibold border border-cyan-500/30">Google</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">Google DeepMind • Accurate & Fast</div>
+          </div>
+          <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5 font-mono text-[10px]">
+            <span class="text-emerald-400">⚡ ~420 t/s</span>
+            <span class="text-gray-400">8k ctx</span>
+          </div>
+        </div>
+
+        <!-- Groq 6: Whisper Large V3 (Speech / Audio) -->
+        <div onclick="selectModel('groq', 'whisper-large-v3', 'Whisper Large V3', 'card-groq-whisper')" id="card-groq-whisper" 
+             class="model-card p-2.5 rounded-lg cursor-pointer flex flex-col justify-between"
+             data-keywords="whisper audio speech voice transcribe groq">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="font-bold text-[var(--foreground)] text-[12px]">Whisper Large V3</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 font-mono font-semibold border border-amber-500/30">Audio</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">OpenAI • Real-Time Transcription</div>
+          </div>
+          <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5 font-mono text-[10px]">
+            <span class="text-amber-400">⚡ Realtime</span>
+            <span class="text-gray-400">Multilingual</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- VIEW 2: OpenRouter Models -->
+    <div id="view-openrouter" class="space-y-2 hidden">
+      <div class="flex items-center justify-between text-[11px] text-[var(--muted-foreground)] px-0.5">
+        <span class="font-medium text-[var(--foreground)]">OPENROUTER FRONTIER MODELS (470+ AVAILABLE)</span>
+        <span class="text-purple-400 font-mono text-[10px]">High Intelligence & Depth</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2" id="or-model-list">
+        
+        <!-- OpenRouter 1: Claude 3.7 / 5.5 Sonnet -->
+        <div onclick="selectModel('openrouter', 'anthropic/claude-sonnet-5.5', 'Claude Sonnet 5.5', 'card-or-claude')" id="card-or-claude" 
+             class="model-card p-2.5 rounded-lg cursor-pointer flex flex-col justify-between"
+             data-keywords="claude anthropic sonnet 3.7 5.5 coding frontier architecture openrouter">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="font-bold text-[var(--foreground)] text-[12px]">Claude Sonnet 5.5</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 font-mono font-semibold border border-amber-500/30">★ Top Coder</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">Anthropic • Premier Code & Architecture</div>
+          </div>
+          <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5 font-mono text-[10px]">
+            <span class="text-amber-400">200k ctx</span>
+            <span class="text-gray-400">$3 / 1M</span>
+          </div>
+        </div>
+
+        <!-- OpenRouter 2: DeepSeek R1 -->
+        <div onclick="selectModel('openrouter', 'deepseek/deepseek-r1', 'DeepSeek R1', 'card-or-r1')" id="card-or-r1" 
+             class="model-card p-2.5 rounded-lg cursor-pointer flex flex-col justify-between"
+             data-keywords="deepseek r1 reasoning math logic open weights openrouter">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="font-bold text-[var(--foreground)] text-[12px]">DeepSeek R1</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-mono font-semibold border border-purple-500/30">🧠 Logic</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">DeepSeek • Algorithmic & Math Specialist</div>
+          </div>
+          <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5 font-mono text-[10px]">
+            <span class="text-purple-400">128k ctx</span>
+            <span class="text-gray-400">$0.55 / 1M</span>
+          </div>
+        </div>
+
+        <!-- OpenRouter 3: OpenAI o3-mini -->
+        <div onclick="selectModel('openrouter', 'openai/o3-mini', 'OpenAI o3-mini', 'card-or-o3')" id="card-or-o3" 
+             class="model-card p-2.5 rounded-lg cursor-pointer flex flex-col justify-between"
+             data-keywords="openai o3 o3-mini reasoning fast math science openrouter">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="font-bold text-[var(--foreground)] text-[12px]">OpenAI o3-mini</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-mono font-semibold border border-cyan-500/30">Speed Logic</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">OpenAI • STEM & Multi-step Logic</div>
+          </div>
+          <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5 font-mono text-[10px]">
+            <span class="text-cyan-400">128k ctx</span>
+            <span class="text-gray-400">$1.10 / 1M</span>
+          </div>
+        </div>
+
+        <!-- OpenRouter 4: Llama 3.3 70B Instruct -->
+        <div onclick="selectModel('openrouter', 'meta-llama/llama-3.3-70b-instruct', 'Llama 3.3 70B Instruct', 'card-or-llama70')" id="card-or-llama70" 
+             class="model-card p-2.5 rounded-lg cursor-pointer flex flex-col justify-between"
+             data-keywords="llama meta 70b instruct open weights openrouter">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="font-bold text-[var(--foreground)] text-[12px]">Llama 3.3 70B</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-mono font-semibold border border-emerald-500/30">Open Weight</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">Meta • High Accuracy Open Frontier</div>
+          </div>
+          <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5 font-mono text-[10px]">
+            <span class="text-emerald-400">128k ctx</span>
+            <span class="text-gray-400">$0.12 / 1M</span>
+          </div>
+        </div>
+
+        <!-- OpenRouter 5: GPT-4o -->
+        <div onclick="selectModel('openrouter', 'openai/gpt-4o', 'OpenAI GPT-4o', 'card-or-gpt4o')" id="card-or-gpt4o" 
+             class="model-card p-2.5 rounded-lg cursor-pointer flex flex-col justify-between"
+             data-keywords="openai gpt-4o gpt4o multimodal vision openrouter">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="font-bold text-[var(--foreground)] text-[12px]">GPT-4o</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 font-mono font-semibold border border-blue-500/30">Omni Vision</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">OpenAI • Multimodal Text & Vision</div>
+          </div>
+          <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5 font-mono text-[10px]">
+            <span class="text-blue-400">128k ctx</span>
+            <span class="text-gray-400">$2.50 / 1M</span>
+          </div>
+        </div>
+
+        <!-- OpenRouter 6: Free Particle-1 -->
+        <div onclick="selectModel('openrouter', 'particle-ai/particle-1:free', 'Particle-1 (Free)', 'card-or-particle')" id="card-or-particle" 
+             class="model-card p-2.5 rounded-lg cursor-pointer flex flex-col justify-between"
+             data-keywords="particle free zero cost coding agent openrouter">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="font-bold text-[var(--foreground)] text-[12px]">Particle-1</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-green-500/20 text-green-400 font-mono font-semibold border border-green-500/30">100% FREE</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">Particle AI • Free Agentic Coder</div>
+          </div>
+          <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5 font-mono text-[10px]">
+            <span class="text-green-400">32k ctx</span>
+            <span class="text-green-400">$0.00</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- VIEW 3: AgentRouter Specialist Personas -->
+    <div id="view-agentrouter" class="space-y-2 hidden">
+      <div class="flex items-center justify-between text-[11px] text-[var(--muted-foreground)] px-0.5">
+        <span class="font-medium text-[var(--foreground)]">AGENTROUTER SPECIALIST DISPATCH</span>
+        <span class="text-emerald-400 font-mono text-[10px]">Autonomous Domain Personas</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2" id="ar-role-list">
+        
+        <!-- Role 1: Coding -->
+        <div onclick="selectModel('agentrouter', 'coding', 'Full-Stack Architect', 'card-ar-coding')" id="card-ar-coding" 
+             class="model-card p-2.5 rounded-lg cursor-pointer flex flex-col justify-between"
+             data-keywords="coding code engineer fullstack architect typescript python">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="font-bold text-[var(--foreground)] text-[12px]">💻 Coding</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 font-mono font-semibold">Claude</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-1">Full-stack software architect, APIs, refactoring</div>
+          </div>
+          <div class="mt-2 pt-1 text-[9px] text-blue-300 font-mono">Role: Full-Stack Architect</div>
+        </div>
+
+        <!-- Role 2: Reasoning -->
+        <div onclick="selectModel('agentrouter', 'reasoning', 'Logic & Math Specialist', 'card-ar-reasoning')" id="card-ar-reasoning" 
+             class="model-card p-2.5 rounded-lg cursor-pointer flex flex-col justify-between"
+             data-keywords="reasoning logic math algorithms optimization deepseek">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="font-bold text-[var(--foreground)] text-[12px]">🧠 Reasoning</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-mono font-semibold">DeepSeek</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-1">Deep logic, mathematics, proof verification</div>
+          </div>
+          <div class="mt-2 pt-1 text-[9px] text-emerald-300 font-mono">Role: Algorithm Specialist</div>
+        </div>
+
+        <!-- Role 3: Fast Triage -->
+        <div onclick="selectModel('agentrouter', 'fast', 'High-Speed Triage', 'card-ar-fast')" id="card-ar-fast" 
+             class="model-card p-2.5 rounded-lg cursor-pointer flex flex-col justify-between"
+             data-keywords="fast triage quick scripts summaries regex llama">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="font-bold text-[var(--foreground)] text-[12px]">⚡ Fast Triage</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 font-mono font-semibold">Llama</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-1">Rapid answers, regex, boilerplate generation</div>
+          </div>
+          <div class="mt-2 pt-1 text-[9px] text-amber-300 font-mono">Role: Rapid Responder</div>
+        </div>
+
+        <!-- Role 4: Code Review -->
+        <div onclick="selectModel('agentrouter', 'review', 'Security Auditor', 'card-ar-review')" id="card-ar-review" 
+             class="model-card p-2.5 rounded-lg cursor-pointer flex flex-col justify-between"
+             data-keywords="review security audit vulnerability bugs quality">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="font-bold text-[var(--foreground)] text-[12px]">🔍 Security Audit</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-400 font-mono font-semibold">Auditor</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-1">OWASP checks, race conditions, code smells</div>
+          </div>
+          <div class="mt-2 pt-1 text-[9px] text-purple-300 font-mono">Role: Security Auditor</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Custom Model ID Bar -->
+    <div class="flex items-center gap-2 pt-1">
+      <label for="customModelInput" class="text-[11px] text-[var(--muted-foreground)] whitespace-nowrap">Custom Model ID:</label>
+      <input id="customModelInput" type="text" placeholder="e.g. llama-3.3-70b-specdec, qwen/qwen-2.5-coder-32b, mistralai/mistral-large" 
+             class="flex-1 px-2.5 py-1 rounded bg-black/40 border border-[var(--card-border)] text-[var(--foreground)] font-mono text-[11px] focus:outline-none focus:border-blue-500 transition-colors" />
+      <button onclick="applyCustomModel()" class="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-medium text-[11px] transition-colors shadow">
+        Apply ID
+      </button>
+    </div>
+
+    <!-- Action Bar & Prompt Helper -->
+    <div class="p-2.5 rounded-lg border border-[var(--card-border)] bg-black/25 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span class="text-[10px] text-gray-400">Target:</span>
+        <code id="targetSnippet" class="px-2 py-0.5 rounded bg-black/50 border border-white/5 text-[11px] text-sky-300 font-mono font-medium">
+          groq:llama-3.3-70b-versatile
+        </code>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="triggerAction('compare')" class="px-2.5 py-1 rounded border border-[var(--card-border)] bg-white/5 hover:bg-white/10 text-[11px] text-gray-200 transition-colors">
+          ⚖️ Compare Providers
+        </button>
+        <button onclick="triggerAction('copy')" class="px-2.5 py-1 rounded border border-[var(--card-border)] bg-white/5 hover:bg-white/10 text-[11px] text-gray-200 transition-colors">
+          📋 Copy Prefix
+        </button>
+        <button onclick="triggerAction('activate')" class="px-3 py-1 rounded bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-[11px] transition-all shadow-md shadow-blue-500/20">
+          🎯 Use Active Model
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Toast Feedback -->
+    <div id="toast" class="hidden text-[10px] text-center py-1 px-2 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 font-mono transition-opacity">
+    </div>
+
+  </div>
+
+  <script>
+    let activeProvider = 'groq';
+    let activeModelId = 'llama-3.3-70b-versatile';
+    let activeDisplayName = 'Llama 3.3 70B';
+
+    // API Key Drawer Controls
+    function toggleApiKeyPanel() {
+      const panel = document.getElementById('apiKeyPanel');
+      panel.classList.toggle('hidden');
+    }
+
+    function toggleInputVisibility(id) {
+      const el = document.getElementById(id);
+      el.type = el.type === 'password' ? 'text' : 'password';
+    }
+
+    function loadSavedApiKeys() {
+      const groq = localStorage.getItem('NOHA_GROQ_KEY') || '';
+      const or = localStorage.getItem('NOHA_OR_KEY') || '';
+      const ar = localStorage.getItem('NOHA_AR_KEY') || '';
+
+      if (groq) {
+        document.getElementById('keyInputGroq').value = groq;
+        document.getElementById('statusBadgeGroq').textContent = '✅ Saved';
+        document.getElementById('statusBadgeGroq').className = 'text-emerald-400 font-mono';
+      }
+      if (or) {
+        document.getElementById('keyInputOR').value = or;
+        document.getElementById('statusBadgeOR').textContent = '✅ Saved';
+        document.getElementById('statusBadgeOR').className = 'text-emerald-400 font-mono';
+      }
+      if (ar) {
+        document.getElementById('keyInputAR').value = ar;
+        document.getElementById('statusBadgeAR').textContent = '✅ Saved';
+        document.getElementById('statusBadgeAR').className = 'text-emerald-400 font-mono';
+      }
+
+      const pill = document.getElementById('apiKeyStatusPill');
+      if (groq && or) {
+        pill.textContent = 'Active (Groq & OR)';
+        pill.className = 'text-[9px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono';
+      } else if (groq || or) {
+        pill.textContent = 'Active';
+        pill.className = 'text-[9px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono';
+      }
+    }
+
+    function saveAllApiKeys() {
+      const groq = document.getElementById('keyInputGroq').value.trim();
+      const or = document.getElementById('keyInputOR').value.trim();
+      const ar = document.getElementById('keyInputAR').value.trim();
+
+      if (groq) localStorage.setItem('NOHA_GROQ_KEY', groq);
+      if (or) localStorage.setItem('NOHA_OR_KEY', or);
+      if (ar) localStorage.setItem('NOHA_AR_KEY', ar);
+
+      loadSavedApiKeys();
+      showToast('💾 API Keys saved locally! Click "Apply to .env" next to a provider to persist permanently in Antigravity.');
+    }
+
+    function applyKeyPrompt(provider) {
+      let val = '';
+      if (provider === 'groq') val = document.getElementById('keyInputGroq').value.trim();
+      if (provider === 'openrouter') val = document.getElementById('keyInputOR').value.trim();
+      if (provider === 'agentrouter') val = document.getElementById('keyInputAR').value.trim();
+
+      if (!val) {
+        showToast(`⚠️ Please enter a ${provider} API key first.`);
+        return;
+      }
+
+      const prompt = `Save ${provider} API key: ${val}`;
+      navigator.clipboard.writeText(prompt);
+      showToast(`Copied: "${prompt}" — Send in chat to write directly to .env!`);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSavedApiKeys();
+    });
+
+    function setProvider(provider) {
+      activeProvider = provider;
+      const tabGroq = document.getElementById('tab-groq');
+      const tabOR = document.getElementById('tab-openrouter');
+      const tabAR = document.getElementById('tab-agentrouter');
+      const viewGroq = document.getElementById('view-groq');
+      const viewOR = document.getElementById('view-openrouter');
+      const viewAR = document.getElementById('view-agentrouter');
+
+      // Reset tabs
+      tabGroq.className = "provider-tab px-3 py-1 rounded-md text-xs font-semibold text-[var(--muted-foreground)] hover:text-white flex items-center gap-1.5";
+      tabOR.className = "provider-tab px-3 py-1 rounded-md text-xs font-semibold text-[var(--muted-foreground)] hover:text-white flex items-center gap-1.5";
+      tabAR.className = "provider-tab px-3 py-1 rounded-md text-xs font-semibold text-[var(--muted-foreground)] hover:text-white flex items-center gap-1.5";
+      
+      viewGroq.classList.add('hidden');
+      viewOR.classList.add('hidden');
+      viewAR.classList.add('hidden');
+
+      if (provider === 'groq') {
+        tabGroq.className = "provider-tab active-groq px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5";
+        viewGroq.classList.remove('hidden');
+        if (!activeModelId.startsWith('llama-') && !activeModelId.startsWith('deepseek-') && !activeModelId.startsWith('mixtral') && !activeModelId.startsWith('gemma') && !activeModelId.startsWith('whisper')) {
+          selectModel('groq', 'llama-3.3-70b-versatile', 'Llama 3.3 70B', 'card-groq-llama70');
+        } else {
+          updateUI();
+        }
+      } else if (provider === 'openrouter') {
+        tabOR.className = "provider-tab active-or px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5";
+        viewOR.classList.remove('hidden');
+        if (!activeModelId.includes('/')) {
+          selectModel('openrouter', 'anthropic/claude-sonnet-5.5', 'Claude Sonnet 5.5', 'card-or-claude');
+        } else {
+          updateUI();
+        }
+      } else if (provider === 'agentrouter') {
+        tabAR.className = "provider-tab active-ar px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5";
+        viewAR.classList.remove('hidden');
+        selectModel('agentrouter', 'coding', 'Full-Stack Architect', 'card-ar-coding');
+      }
+    }
+
+    function selectModel(provider, modelId, displayName, cardId) {
+      activeProvider = provider;
+      activeModelId = modelId;
+      activeDisplayName = displayName;
+
+      // Update card visual state
+      document.querySelectorAll('.model-card').forEach(c => c.classList.remove('active'));
+      if (cardId) {
+        const card = document.getElementById(cardId);
+        if (card) card.classList.add('active');
+      }
+
+      updateUI();
+      showToast(`Selected: ${displayName} (${activeProvider})`);
+    }
+
+    function applyCustomModel() {
+      const input = document.getElementById('customModelInput');
+      const val = input.value.trim();
+      if (!val) return;
+      activeModelId = val;
+      activeDisplayName = val;
+      updateUI();
+      showToast(`Custom Model Set: ${val}`);
+    }
+
+    function updateUI() {
+      const badge = document.getElementById('activeModelBadge');
+      const snippet = document.getElementById('targetSnippet');
+
+      let icon = '⚡';
+      if (activeProvider === 'openrouter') icon = '🌐';
+      if (activeProvider === 'agentrouter') icon = '🎯';
+
+      badge.textContent = `${icon} ${activeProvider}: ${activeModelId}`;
+      snippet.textContent = `${activeProvider}:${activeModelId}`;
+    }
+
+    function filterModels() {
+      const query = document.getElementById('searchInput').value.toLowerCase().trim();
+      const cards = document.querySelectorAll('.model-card');
+      cards.forEach(card => {
+        const kw = (card.getAttribute('data-keywords') || '') + ' ' + card.innerText.toLowerCase();
+        if (!query || kw.includes(query)) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 2500);
+    }
+
+    function triggerAction(action) {
+      let promptText = '';
+      if (action === 'activate') {
+        if (activeProvider === 'groq') {
+          promptText = `Ask Groq (${activeModelId}): `;
+        } else if (activeProvider === 'openrouter') {
+          promptText = `Ask ${activeModelId} on OpenRouter: `;
+        } else {
+          promptText = `Route to AgentRouter (${activeModelId} specialist): `;
+        }
+        navigator.clipboard.writeText(promptText);
+        showToast(`Copied query prefix: "${promptText}"`);
+      } else if (action === 'copy') {
+        promptText = `${activeProvider}:${activeModelId}`;
+        navigator.clipboard.writeText(promptText);
+        showToast(`Copied identifier: "${promptText}"`);
+      } else if (action === 'compare') {
+        promptText = `Compare answers across Groq (llama-3.3-70b-versatile), OpenRouter (anthropic/claude-sonnet-5.5), and DeepSeek R1 for: `;
+        navigator.clipboard.writeText(promptText);
+        showToast('Copied multi-provider comparison prompt to clipboard!');
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "noha-ai-assistent": {
+      "command": "python",
+      "args": [
+        "server/mcp_server.py"
+      ],
+      "env": {
+        "PYTHONIOENCODING": "utf-8"
+      }
+    }
+  }
+}

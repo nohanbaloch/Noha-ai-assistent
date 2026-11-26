@@ -1,0 +1,15 @@
+{
+  "name": "noha-ai-assistent",
+  "displayName": "Noha AI Assistant",
+  "version": "1.0.0",
+  "description": "Next-generation AI Assistant for Antigravity IDE (VS Code). Seamlessly switch between OpenRouter, AgentRouter, and Groq LPU with an Antigravity-style model list, lightning-fast inference, and autonomous specialist dispatch.",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "Open Noha AI model switcher (/noha)",
+    "Ask Groq Llama 3.3 for a lightning-fast response",
+    "Compare Claude Sonnet 5.5, DeepSeek R1, and Groq Llama 3.3",
+    "Route task to AgentRouter coding specialist"
+  ],
+  "author": "Noha & Antigravity Community",
+  "homepage": "https://antigravity.google"
+}
